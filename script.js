@@ -750,6 +750,55 @@ cheatModalClose.addEventListener("click", function () {
 });
 
 /* ============================================
+   تحسينات أمنية - منع الغش
+   - تعطيل كليك يمين (Right Click) أثناء الاختبار
+   - منع نسخ ولصق نص الأسئلة للبحث عنه
+   - منع فتح أدوات المطور (DevTools) بالاختصارات
+   ============================================ */
+
+// 1. تعطيل كليك يمين أثناء الاختبار
+document.addEventListener("contextmenu", function (e) {
+  if (quizActive) {
+    e.preventDefault();
+  }
+});
+
+// 2. منع النسخ واللصق والقص أثناء الاختبار
+["copy", "cut", "paste"].forEach(function (eventName) {
+  document.addEventListener(eventName, function (e) {
+    if (quizActive) {
+      e.preventDefault();
+    }
+  });
+});
+
+// 3. منع تحديد النص أثناء الاختبار
+document.addEventListener("selectstart", function (e) {
+  // السماح بالتحديد فقط داخل حقل الإدخال (اسم الطالب)
+  if (quizActive && e.target.tagName !== "INPUT") {
+    e.preventDefault();
+  }
+});
+
+// 4. منع اختصارات فتح DevTools أثناء الاختبار
+document.addEventListener("keydown", function (e) {
+  if (!quizActive) return;
+
+  // منع F12
+  if (e.key === "F12") {
+    e.preventDefault();
+  }
+  // منع Ctrl+Shift+I (Inspect) و Ctrl+Shift+J (Console) و Ctrl+Shift+C (Select Element)
+  if (e.ctrlKey && e.shiftKey && ["I", "J", "C"].includes(e.key.toUpperCase())) {
+    e.preventDefault();
+  }
+  // منع Ctrl+U (View Source)
+  if (e.ctrlKey && e.key.toUpperCase() === "U") {
+    e.preventDefault();
+  }
+});
+
+/* ============================================
    بدء الاختبار
    ============================================ */
 startForm.onsubmit = function (event) {
