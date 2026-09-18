@@ -303,7 +303,7 @@ const reviewSection = document.getElementById("review-section");
 const reviewCard = document.getElementById("review-card");
 const reviewTitle = document.getElementById("review-title");
 const reviewBtn = document.getElementById("review-btn");
-const restartBtn = document.getElementById("restart-btn");
+
 const reviewPrevBtn = document.getElementById("review-prev");
 const reviewNextBtn = document.getElementById("review-next");
 const reviewBackBtn = document.getElementById("review-back");
@@ -713,41 +713,7 @@ reviewNextBtn.addEventListener("click", function () {
   }
 });
 
-/* ============================================
-   إعادة الاختبار
-   ============================================ */
-restartBtn.addEventListener("click", function () {
-  // إعادة تعيين كل المتغيرات
-  clearProgress();
-  currentQuestion = 0;
-  score = 0;
-  studentName = "";
-  selectedAnswerIndex = null;
-  isAnswerSubmitted = false;
-  userAnswers = [];
-  tabSwitchCount = 0;
-  quizActive = false;
-  timeLeft = 1200;
-  clearInterval(timerInterval);
 
-  // إعادة تجهيز الأسئلة بترتيب عشوائي جديد
-  prepareQuestions();
-
-  // إعادة العرض
-  resultBox.style.display = "none";
-  reviewSection.style.display = "none";
-  document.querySelector(".quiz-container").style.display = "";
-  document.querySelector(".progress-area").style.display = "";
-  quizContent.hidden = true;
-  startScreen.hidden = false;
-  studentNameInput.value = "";
-
-  // إعادة التايمر لحالته الأصلية
-  timerElement.classList.remove("warning", "danger");
-  timerElement.textContent = "20:00";
-  scoreElement.innerHTML = "الدرجة: 0";
-  progress.style.width = "0%";
-});
 
 /* ============================================
    نظام مكافحة الغش (Anti-Cheat System)
