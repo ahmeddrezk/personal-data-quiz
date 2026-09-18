@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="اختبار تفاعلي على البيانات الشخصية وحماية الخصوصية - إعداد المهندس أحمد رزق" />
     <title>اختبار علي البيانات الشخصية | Eng/ Ahmed Rezk</title>
     <link rel="stylesheet" href="style.css" />
   </head>
@@ -10,7 +11,20 @@
     <div class="quiz-page">
       <!-- Header -->
       <header class="header">
-        <div class="code-icon">&lt;/&gt;</div>
+        <!-- Dark Mode Toggle -->
+        <div class="header-top-bar">
+          <div class="theme-toggle-wrapper">
+            <span class="theme-icon">☀️</span>
+            <label class="theme-switch">
+              <input type="checkbox" id="theme-toggle" />
+              <span class="theme-slider"></span>
+            </label>
+            <span class="theme-icon">🌙</span>
+            <span class="toggle-label" id="theme-label">الوضع الفاتح</span>
+          </div>
+        </div>
+
+        <div class="shield-icon">🛡️</div>
         <h1>اختبار علي البيانات الشخصية</h1>
         <h3>Personal Data Quiz</h3>
         <p>إعداد: Eng/ Ahmed Rezk</p>
@@ -63,11 +77,44 @@
       <div id="result" class="result-box">
         <h2>انتهى الاختبار 🎉</h2>
         <p id="final-score"></p>
+        <div id="grade-message" class="grade-message"></div>
+        <p id="tab-switch-info" class="tab-switch-info"></p>
         <p
           id="notification-status"
           class="notification-status"
           aria-live="polite"
         ></p>
+        <div class="result-actions">
+          <button id="review-btn" class="review-btn">📋 مراجعة الإجابات</button>
+          <button id="restart-btn" class="restart-btn">🔄 إعادة الاختبار</button>
+        </div>
+      </div>
+
+      <!-- Review Mode Section -->
+      <div id="review-section" class="review-section">
+        <div class="review-header">
+          <h3 id="review-title">مراجعة الإجابات</h3>
+          <div class="review-nav">
+            <button id="review-prev">⟵ السابق</button>
+            <button id="review-next">التالي ⟶</button>
+            <button id="review-back">↩ العودة للنتيجة</button>
+          </div>
+        </div>
+        <div id="review-card" class="review-question-card">
+          <!-- Review content rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Anti-Cheat Warning Modal -->
+      <div id="cheat-modal" class="cheat-modal-overlay">
+        <div class="cheat-modal">
+          <div class="modal-icon">⚠️</div>
+          <h3>تنبيه: تم رصد خروجك من الصفحة!</h3>
+          <p>تم تسجيل خروجك من علامة التبويب أثناء الاختبار.</p>
+          <p>يُرجى البقاء في صفحة الاختبار حتى الانتهاء.</p>
+          <p class="switch-count" id="modal-switch-count"></p>
+          <button id="cheat-modal-close" class="cheat-modal-close">فهمت، أعود للاختبار</button>
+        </div>
       </div>
 
       <footer>

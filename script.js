@@ -250,6 +250,13 @@ const rawQuestions = [
   },
 ];
 
+/* ============================================
+   LocalStorage Key - مفتاح مميز لهذا الكويز
+   يُستخدم مفتاح فريد لمنع تداخل البيانات مع
+   أي كويز آخر على نفس الدومين
+   ============================================ */
+const STORAGE_KEY = "personalDataQuiz_State";
+
 // دالة لخلط المصفوفة عشوائياً (Fisher-Yates Shuffle)
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -258,31 +265,24 @@ function shuffleArray(array) {
   }
 }
 
-// تجهيز الأسئلة والإجابات وخلطهم
+/* ============================================
+   تجهيز الأسئلة والإجابات وخلطهم
+   ============================================ */
 let questions = [];
-rawQuestions.forEach((q) => {
-  let answersObjs = q.answers.map((ans, idx) => ({
-    text: ans,
-    isCorrect: idx === q.correct,
-  }));
-  shuffleArray(answersObjs); // خلط الإجابات
-  questions.push({
-    question: q.question,
-    answers: answersObjs,
-  });
-});
-shuffleArray(questions); // خلط الأسئلة
-
 let currentQuestion = 0;
 let score = 0;
 let studentName = "";
 let selectedAnswerIndex = null;
 let isAnswerSubmitted = false;
+let userAnswers = []; // مصفوفة لحفظ إجابات الطالب (index المختار لكل سؤال)
+let tabSwitchCount = 0; // عدد مرات مغادرة التاب
+let quizActive = false; // هل الاختبار قيد التشغيل حالياً؟
 
 // التايمر (20 دقيقة = 1200 ثانية)
 let timeLeft = 1200;
 let timerInterval;
 
+// DOM Elements
 const startScreen = document.getElementById("start-screen");
 const startForm = document.getElementById("start-form");
 const studentNameInput = document.getElementById("student-name");
@@ -297,7 +297,129 @@ const resultBox = document.getElementById("result");
 const finalScore = document.getElementById("final-score");
 const notificationStatus = document.getElementById("notification-status");
 const timerElement = document.getElementById("timer");
+const gradeMessageEl = document.getElementById("grade-message");
+const tabSwitchInfo = document.getElementById("tab-switch-info");
+const reviewSection = document.getElementById("review-section");
+const reviewCard = document.getElementById("review-card");
+const reviewTitle = document.getElementById("review-title");
+const reviewBtn = document.getElementById("review-btn");
+const restartBtn = document.getElementById("restart-btn");
+const reviewPrevBtn = document.getElementById("review-prev");
+const reviewNextBtn = document.getElementById("review-next");
+const reviewBackBtn = document.getElementById("review-back");
+const themeToggle = document.getElementById("theme-toggle");
+const themeLabel = document.getElementById("theme-label");
+const cheatModal = document.getElementById("cheat-modal");
+const cheatModalClose = document.getElementById("cheat-modal-close");
+const modalSwitchCount = document.getElementById("modal-switch-count");
 
+let reviewIndex = 0; // الفهرس الحالي في وضع المراجعة
+
+/* ============================================
+   Dark Mode Toggle - الوضع الليلي
+   ============================================ */
+function initTheme() {
+  // التحقق من تفضيل المستخدم المحفوظ
+  const savedTheme = localStorage.getItem("personalDataQuiz_Theme");
+  if (savedTheme === "dark") {
+    document.documentElement.setAttribute("data-theme", "dark");
+    themeToggle.checked = true;
+    themeLabel.textContent = "الوضع الداكن";
+  }
+}
+
+themeToggle.addEventListener("change", function () {
+  if (this.checked) {
+    document.documentElement.setAttribute("data-theme", "dark");
+    localStorage.setItem("personalDataQuiz_Theme", "dark");
+    themeLabel.textContent = "الوضع الداكن";
+  } else {
+    document.documentElement.removeAttribute("data-theme");
+    localStorage.setItem("personalDataQuiz_Theme", "light");
+    themeLabel.textContent = "الوضع الفاتح";
+  }
+});
+
+/* ============================================
+   LocalStorage - حفظ واستعادة التقدم
+   يتم حفظ حالة الاختبار بالكامل لمنع فقدان
+   التقدم عند عمل تحديث للصفحة (Refresh)
+   ============================================ */
+function saveProgress() {
+  // حفظ حالة الاختبار الكاملة في localStorage
+  const state = {
+    studentName: studentName,
+    timeLeft: timeLeft,
+    currentQuestion: currentQuestion,
+    score: score,
+    questions: questions, // الأسئلة بترتيبها العشوائي
+    userAnswers: userAnswers,
+    tabSwitchCount: tabSwitchCount,
+    quizActive: quizActive,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function loadProgress() {
+  // محاولة استعادة حالة الاختبار من localStorage
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return false;
+
+  try {
+    const state = JSON.parse(saved);
+    // التحقق من أن البيانات المحفوظة صالحة
+    if (
+      !state.studentName ||
+      !state.questions ||
+      !Array.isArray(state.questions) ||
+      !state.quizActive
+    ) {
+      clearProgress();
+      return false;
+    }
+
+    studentName = state.studentName;
+    timeLeft = state.timeLeft;
+    currentQuestion = state.currentQuestion;
+    score = state.score;
+    questions = state.questions;
+    userAnswers = state.userAnswers || [];
+    tabSwitchCount = state.tabSwitchCount || 0;
+    quizActive = state.quizActive;
+    return true;
+  } catch (e) {
+    clearProgress();
+    return false;
+  }
+}
+
+function clearProgress() {
+  // مسح بيانات التقدم عند إنهاء الاختبار
+  localStorage.removeItem(STORAGE_KEY);
+}
+
+/* ============================================
+   تهيئة الأسئلة (تجهيز جديد أو استعادة)
+   ============================================ */
+function prepareQuestions() {
+  questions = [];
+  rawQuestions.forEach((q) => {
+    let answersObjs = q.answers.map((ans, idx) => ({
+      text: ans,
+      isCorrect: idx === q.correct,
+    }));
+    shuffleArray(answersObjs); // خلط الإجابات
+    questions.push({
+      question: q.question,
+      answers: answersObjs,
+    });
+  });
+  shuffleArray(questions); // خلط الأسئلة
+}
+
+/* ============================================
+   إرسال النتيجة عبر البريد الإلكتروني
+   ============================================ */
 async function sendCompletionNotification() {
   notificationStatus.textContent = "جاري إرسال النتيجة...";
   try {
@@ -313,6 +435,7 @@ async function sendCompletionNotification() {
           _subject: `نتيجة اختبار البيانات الشخصية من ${studentName}`,
           name: studentName,
           score: `${score} من ${questions.length}`,
+          tabSwitches: `${tabSwitchCount} مرة خروج من التاب`,
           _template: "table",
           _captcha: "false",
         }),
@@ -326,21 +449,43 @@ async function sendCompletionNotification() {
   }
 }
 
+/* ============================================
+   مؤشرات الوقت البصرية - Timer Visual States
+   يتغير لون التايمر حسب الوقت المتبقي:
+   - عادي: أكثر من 5 دقائق
+   - برتقالي (warning): 5 دقائق أو أقل
+   - أحمر مع نبض (danger): دقيقة واحدة أو أقل
+   ============================================ */
 function updateTimerDisplay() {
   let minutes = Math.floor(timeLeft / 60);
   let seconds = timeLeft % 60;
   timerElement.textContent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
 
+  // إزالة جميع حالات التايمر أولاً
+  timerElement.classList.remove("warning", "danger");
+
   if (timeLeft <= 60) {
+    // دقيقة واحدة أو أقل: أحمر مع تأثير نبض
     timerElement.classList.add("danger");
+  } else if (timeLeft <= 300) {
+    // 5 دقائق أو أقل: برتقالي
+    timerElement.classList.add("warning");
   }
 }
 
+/* ============================================
+   التايمر
+   التايمر يستمر في العد حتى أثناء ظهور
+   الـ Modal التحذيري (لمنع استغلال الخروج
+   من التاب لإيقاف الوقت مؤقتاً)
+   ============================================ */
 function startTimer() {
   updateTimerDisplay();
   timerInterval = setInterval(() => {
     timeLeft--;
     updateTimerDisplay();
+    // حفظ التقدم كل ثانية (لضمان دقة الوقت عند Refresh)
+    saveProgress();
     if (timeLeft <= 0) {
       clearInterval(timerInterval);
       endQuiz();
@@ -348,6 +493,9 @@ function startTimer() {
   }, 1000);
 }
 
+/* ============================================
+   تحميل وعرض السؤال
+   ============================================ */
 function loadQuestion() {
   const q = questions[currentQuestion];
   isAnswerSubmitted = false;
@@ -359,6 +507,7 @@ function loadQuestion() {
   answersElement.innerHTML = "";
   numberElement.innerHTML = `السؤال ${currentQuestion + 1} من ${questions.length}`;
   progress.style.width = `${(currentQuestion / questions.length) * 100}%`;
+  scoreElement.innerHTML = `الدرجة: ${score}`;
 
   q.answers.forEach((answerObj, index) => {
     const button = document.createElement("button");
@@ -407,27 +556,236 @@ nextButton.onclick = function () {
       buttons[correctIndex].classList.add("correct");
     }
 
+    // حفظ إجابة الطالب في مصفوفة userAnswers
+    userAnswers[currentQuestion] = selectedAnswerIndex;
+    saveProgress();
+
     nextButton.textContent = "السؤال التالي";
   } else {
     // مرحلة الانتقال للسؤال التالي
     currentQuestion++;
     if (currentQuestion < questions.length) {
       loadQuestion();
+      saveProgress();
     } else {
       endQuiz();
     }
   }
 };
 
+/* ============================================
+   رسائل التقييم المخصصة
+   تعرض رسالة تفاعلية حسب درجة الطالب
+   ============================================ */
+function getGradeMessage(score) {
+  if (score >= 20) {
+    return { text: "خبير خصوصية 🏆", className: "grade-expert" };
+  } else if (score >= 15) {
+    return { text: "مستوى جيد 🌟", className: "grade-good" };
+  } else {
+    return { text: "تحتاج لمراجعة القوانين 📚", className: "grade-review" };
+  }
+}
+
+/* ============================================
+   إنهاء الاختبار
+   ============================================ */
 function endQuiz() {
   clearInterval(timerInterval); // إيقاف التايمر
+  quizActive = false;
+
   document.querySelector(".quiz-container").style.display = "none";
+  document.querySelector(".progress-area").style.display = "none";
   resultBox.style.display = "block";
+
   finalScore.textContent = `${studentName}، حصلت على ${score} من ${questions.length}`;
   progress.style.width = "100%";
+
+  // عرض رسالة التقييم
+  const grade = getGradeMessage(score);
+  gradeMessageEl.textContent = grade.text;
+  gradeMessageEl.className = `grade-message ${grade.className}`;
+
+  // عرض عدد مرات مغادرة التاب
+  if (tabSwitchCount > 0) {
+    tabSwitchInfo.textContent = `⚠️ تم رصد خروجك من الصفحة ${tabSwitchCount} مرة أثناء الاختبار`;
+  } else {
+    tabSwitchInfo.textContent = "✅ لم يتم رصد أي خروج من الصفحة - أحسنت!";
+  }
+
+  // مسح بيانات التقدم من localStorage عند إنهاء الاختبار
+  clearProgress();
+
   sendCompletionNotification();
 }
 
+/* ============================================
+   وضع مراجعة الإجابات (Review Mode)
+   يتم التنقل بين الأسئلة في وضع القراءة فقط
+   عن طريق إخفاء وإظهار العناصر بـ JavaScript
+   بدون إعادة تحميل الصفحة (Reload)
+   ============================================ */
+function renderReviewQuestion(index) {
+  const q = questions[index];
+  const userAnswer = userAnswers[index]; // فهرس الإجابة التي اختارها الطالب
+  const isAnswered = userAnswer !== undefined && userAnswer !== null;
+
+  // تحديد ما إذا كانت الإجابة صحيحة
+  let isCorrectAnswer = false;
+  if (isAnswered) {
+    isCorrectAnswer = q.answers[userAnswer].isCorrect;
+  }
+
+  // بناء بطاقة المراجعة
+  let html = "";
+
+  // رقم السؤال
+  html += `<div class="review-question-number">السؤال ${index + 1} من ${questions.length}</div>`;
+
+  // حالة الإجابة (صح / خطأ / لم يُجب)
+  if (!isAnswered) {
+    html += `<span class="review-status-badge badge-skipped">⏭️ لم يُجب</span>`;
+  } else if (isCorrectAnswer) {
+    html += `<span class="review-status-badge badge-correct">✅ إجابة صحيحة</span>`;
+  } else {
+    html += `<span class="review-status-badge badge-wrong">❌ إجابة خاطئة</span>`;
+  }
+
+  // نص السؤال
+  html += `<div class="review-question-text">${q.question}</div>`;
+
+  // الإجابات
+  html += `<div class="answers-container">`;
+  q.answers.forEach((ansObj, i) => {
+    let classes = "answer ";
+
+    if (ansObj.isCorrect) {
+      // الإجابة الصحيحة تظهر بالأخضر دائماً
+      classes += "review-correct";
+    } else if (isAnswered && i === userAnswer && !isCorrectAnswer) {
+      // إجابة الطالب الخاطئة تظهر بالأحمر
+      classes += "review-user-wrong";
+    } else {
+      // باقي الإجابات تظهر باهتة
+      classes += "review-neutral";
+    }
+
+    html += `<button class="${classes}" disabled>${ansObj.text}</button>`;
+  });
+  html += `</div>`;
+
+  reviewCard.innerHTML = html;
+  reviewTitle.textContent = `مراجعة الإجابات - السؤال ${index + 1} من ${questions.length}`;
+
+  // تحديث حالة أزرار التنقل
+  reviewPrevBtn.disabled = index === 0;
+  reviewNextBtn.disabled = index === questions.length - 1;
+}
+
+function enterReviewMode() {
+  // إخفاء شاشة النتيجة وإظهار قسم المراجعة (بدون reload)
+  resultBox.style.display = "none";
+  reviewSection.style.display = "block";
+  reviewIndex = 0;
+  renderReviewQuestion(reviewIndex);
+}
+
+function exitReviewMode() {
+  // إخفاء قسم المراجعة والعودة لشاشة النتيجة (بدون reload)
+  reviewSection.style.display = "none";
+  resultBox.style.display = "block";
+}
+
+reviewBtn.addEventListener("click", enterReviewMode);
+reviewBackBtn.addEventListener("click", exitReviewMode);
+
+reviewPrevBtn.addEventListener("click", function () {
+  if (reviewIndex > 0) {
+    reviewIndex--;
+    renderReviewQuestion(reviewIndex);
+  }
+});
+
+reviewNextBtn.addEventListener("click", function () {
+  if (reviewIndex < questions.length - 1) {
+    reviewIndex++;
+    renderReviewQuestion(reviewIndex);
+  }
+});
+
+/* ============================================
+   إعادة الاختبار
+   ============================================ */
+restartBtn.addEventListener("click", function () {
+  // إعادة تعيين كل المتغيرات
+  clearProgress();
+  currentQuestion = 0;
+  score = 0;
+  studentName = "";
+  selectedAnswerIndex = null;
+  isAnswerSubmitted = false;
+  userAnswers = [];
+  tabSwitchCount = 0;
+  quizActive = false;
+  timeLeft = 1200;
+  clearInterval(timerInterval);
+
+  // إعادة تجهيز الأسئلة بترتيب عشوائي جديد
+  prepareQuestions();
+
+  // إعادة العرض
+  resultBox.style.display = "none";
+  reviewSection.style.display = "none";
+  document.querySelector(".quiz-container").style.display = "";
+  document.querySelector(".progress-area").style.display = "";
+  quizContent.hidden = true;
+  startScreen.hidden = false;
+  studentNameInput.value = "";
+
+  // إعادة التايمر لحالته الأصلية
+  timerElement.classList.remove("warning", "danger");
+  timerElement.textContent = "20:00";
+  scoreElement.innerHTML = "الدرجة: 0";
+  progress.style.width = "0%";
+});
+
+/* ============================================
+   نظام مكافحة الغش (Anti-Cheat System)
+   يستخدم visibilitychange لرصد خروج الطالب
+   من علامة التبويب أثناء الاختبار.
+   
+   ملاحظات مهمة:
+   - التايمر يستمر في العد أثناء ظهور الـ Modal
+     (لمنع الطالب من استغلال الخروج لإيقاف الوقت)
+   - يتم تسجيل عدد مرات الخروج وعرضها في النتيجة
+   - يتم إرسال عدد مرات الخروج مع النتيجة بالبريد
+   ============================================ */
+document.addEventListener("visibilitychange", function () {
+  // التفعيل فقط أثناء الاختبار (ليس في شاشة البداية أو النتيجة)
+  if (!quizActive) return;
+
+  if (document.hidden) {
+    // الطالب غادر علامة التبويب
+    tabSwitchCount++;
+    saveProgress(); // حفظ عدد مرات الخروج
+  } else {
+    // الطالب عاد لعلامة التبويب - عرض التحذير
+    // التايمر لا يتوقف - يستمر في العد تلقائياً
+    if (tabSwitchCount > 0) {
+      modalSwitchCount.textContent = `عدد مرات الخروج: ${tabSwitchCount}`;
+      cheatModal.classList.add("active");
+    }
+  }
+});
+
+// إغلاق Modal التحذير
+cheatModalClose.addEventListener("click", function () {
+  cheatModal.classList.remove("active");
+});
+
+/* ============================================
+   بدء الاختبار
+   ============================================ */
 startForm.onsubmit = function (event) {
   event.preventDefault();
   studentName = studentNameInput.value.trim();
@@ -435,8 +793,45 @@ startForm.onsubmit = function (event) {
     studentNameInput.focus();
     return;
   }
+
+  // تجهيز أسئلة جديدة
+  prepareQuestions();
+  userAnswers = new Array(questions.length).fill(null);
+  tabSwitchCount = 0;
+  quizActive = true;
+
   startScreen.hidden = true;
   quizContent.hidden = false;
   startTimer();
   loadQuestion();
+  saveProgress();
 };
+
+/* ============================================
+   استعادة التقدم عند تحميل الصفحة
+   عند فتح الصفحة، يتم التحقق من وجود بيانات
+   محفوظة في localStorage لاستعادة حالة الاختبار
+   في حالة عمل Refresh بالخطأ
+   ============================================ */
+function initApp() {
+  // تفعيل الوضع الليلي إن كان محفوظاً
+  initTheme();
+
+  // محاولة استعادة التقدم المحفوظ
+  if (loadProgress()) {
+    // تم العثور على بيانات محفوظة - استعادة الحالة
+    quizActive = true;
+    startScreen.hidden = true;
+    quizContent.hidden = false;
+    scoreElement.innerHTML = `الدرجة: ${score}`;
+
+    // استعادة التايمر
+    startTimer();
+
+    // تحميل السؤال الحالي
+    loadQuestion();
+  }
+}
+
+// تشغيل التطبيق
+initApp();
