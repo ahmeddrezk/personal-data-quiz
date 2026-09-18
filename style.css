@@ -306,15 +306,6 @@ body {
   font-size: 16px !important;
   font-weight: 600 !important;
 }
-.result-box button {
-  padding: 15px 35px;
-  border: none;
-  border-radius: 15px;
-  background: #1769d2;
-  color: white;
-  font-size: 18px;
-  cursor: pointer;
-}
 footer {
   text-align: center;
   margin-top: 35px;
@@ -362,8 +353,7 @@ footer {
   }
   .start-form input,
   .start-btn,
-  .next-btn,
-  .result-box button {
+  .next-btn {
     min-height: 52px;
     font-size: 16px;
   }
