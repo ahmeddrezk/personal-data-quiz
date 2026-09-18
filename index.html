@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>اختبار علي البيانات الشخصية | Eng/ Ahmed Rezk</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="quiz-page">
+      <!-- Header -->
+      <header class="header">
+        <div class="code-icon">&lt;/&gt;</div>
+        <h1>اختبار علي البيانات الشخصية</h1>
+        <h3>Personal Data Quiz</h3>
+        <p>إعداد: Eng/ Ahmed Rezk</p>
+      </header>
+
+      <!-- Start Screen -->
+      <section id="start-screen" class="start-screen">
+        <h2>جاهز للاختبار؟</h2>
+        <p>اكتب اسمك أولًا لبدء الاختبار (المدة: 20 دقيقة).</p>
+        <form id="start-form" class="start-form">
+          <label for="student-name">الاسم</label>
+          <input
+            id="student-name"
+            name="student-name"
+            type="text"
+            placeholder="اكتب اسمك هنا"
+            autocomplete="name"
+            maxlength="60"
+            required
+          />
+          <button type="submit" class="start-btn">ابدأ الاختبار</button>
+        </form>
+      </section>
+
+      <!-- Progress -->
+      <div id="quiz-content" class="quiz-content" hidden>
+        <div class="progress-area">
+          <div class="progress-info">
+            <span id="question-number"> السؤال 1 من 25 </span>
+            <span id="timer" class="timer">20:00</span>
+            <span id="score"> الدرجة: 0 </span>
+          </div>
+          <div class="progress-bar">
+            <div id="progress"></div>
+          </div>
+        </div>
+
+        <!-- Question Container -->
+        <main class="quiz-container">
+          <div class="question-label">السؤال</div>
+          <h2 id="question">جاري تحميل السؤال...</h2>
+          <div id="answers" class="answers-container">
+            <!-- الاختيارات سيتم إضافتها من JavaScript -->
+          </div>
+          <button id="next-btn" class="next-btn" disabled>تأكيد الإجابة</button>
+        </main>
+      </div>
+
+      <!-- Result -->
+      <div id="result" class="result-box">
+        <h2>انتهى الاختبار 🎉</h2>
+        <p id="final-score"></p>
+        <p
+          id="notification-status"
+          class="notification-status"
+          aria-live="polite"
+        ></p>
+        <button onclick="location.reload()">إعادة الاختبار</button>
+      </div>
+
+      <footer>IT • Programming • Digital Ethics</footer>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
